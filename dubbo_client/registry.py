@@ -1,5 +1,4 @@
 # coding=utf-8
-
 """
  Licensed to the Apache Software Foundation (ASF) under one or more
  contributor license agreements.  See the NOTICE file distributed with
@@ -17,7 +16,6 @@
 
 """
 
-
 import logging.config
 import os
 import os.path
@@ -25,7 +23,6 @@ import random
 import socket
 import struct
 import threading
-import time
 import urllib
 from threading import Thread
 
@@ -385,7 +382,6 @@ class MulticastRegistry(Registry):
         def run(self):
             while True:
                 event = self.sock.recv(10240)
-                print event
                 self.callback(event.rstrip())
 
         def set_mssage(self, msg):
@@ -410,30 +406,3 @@ class MulticastRegistry(Registry):
             if url.startswith('jsonrpc'):
                 service_provide = ServiceURL(url)
                 self._remove_node(service_provide.interface, service_provide)
-
-
-if __name__ == '__main__':
-    zk = KazooClient(hosts='192.168.59.103:2181')
-    zk.start()
-    parent_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', '')
-    nodes = zk.get_children(parent_node)
-    for child_node in nodes:
-        node = urllib.unquote(child_node).decode('utf8')
-        print node
-    configurators_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', 'configurators')
-    nodes = zk.get_children(configurators_node)
-    for child_node in nodes:
-        node = urllib.unquote(child_node).decode('utf8')
-        print node
-    providers_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', 'providers')
-    nodes = zk.get_children(providers_node)
-    for child_node in nodes:
-        node = urllib.unquote(child_node).decode('utf8')
-        print node
-    # zk.delete(parent_node+'/'+child_node, recursive=True)
-    # registry = MulticastRegistry('224.5.6.7:1234')
-    registry = ZookeeperRegistry('zookeeper:2181')
-    registry.subscribe('com.ofpay.demo.api.UserProvider')
-    print registry.get_providers('com.ofpay.demo.api.UserProvider')
-
-    time.sleep(500)

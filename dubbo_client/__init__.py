@@ -1,3 +1,4 @@
+# coding=utf-8
 """
  Licensed to the Apache Software Foundation (ASF) under one or more
  contributor license agreements.  See the NOTICE file distributed with
@@ -15,17 +16,7 @@
 
 """
 
-
-from rpclib import (
-    DubboClient,
-)
+from rpclib import DubboClient
 from rpcerror import *
-
-from registry import (
-    Registry,
-    ZookeeperRegistry,
-    MulticastRegistry
-)
-from config import (
-    ApplicationConfig,
-)
+from registry import Registry, ZookeeperRegistry, MulticastRegistry
+from config import ApplicationConfig

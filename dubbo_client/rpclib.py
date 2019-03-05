@@ -16,14 +16,10 @@
 
 """
 
-
 from urllib2 import HTTPError
-
 from pyjsonrpc import HttpClient, JsonRpcError
-
 from dubbo_client.registry import Registry
-from dubbo_client.rpcerror import ConnectionFail, dubbo_client_errors, InternalError, DubboClientError
-
+from dubbo_client.rpcerror import ConnectionFail, InternalError, DubboClientError, dubbo_client_errors
 
 
 class DubboClient(object):
@@ -51,7 +47,6 @@ class DubboClient(object):
 
     def call(self, method, *args, **kwargs):
         provider = self.registry.get_random_provider(self.interface, version=self.version, group=self.group)
-        # print service_url.location
         client = HttpClient(url="http://{0}{1}".format(provider.location, provider.path))
         try:
             return client.call(method, *args, **kwargs)
@@ -79,7 +74,3 @@ class DubboClient(object):
         Allows the usage of attributes as *method* names.
         """
         return self._Method(client_instance=self, method=method)
-
-
-if __name__ == '__main__':
-    pass

@@ -1,5 +1,4 @@
 # coding=utf-8
-
 """
  Licensed to the Apache Software Foundation (ASF) under one or more
  contributor license agreements.  See the NOTICE file distributed with
@@ -16,10 +15,6 @@
  limitations under the License.
 
 """
-
-
-
-dubbo_client_errors = {}
 
 
 class DubboClientError(RuntimeError):
@@ -106,10 +101,12 @@ class UserDefinedError(DubboClientError):
         DubboClientError.__init__(self, message=message, data=data)
 
 
-dubbo_client_errors[MethodNotFound.code] = MethodNotFound
-dubbo_client_errors[NoProvider.code] = NoProvider
-dubbo_client_errors[ConnectionFail.code] = ConnectionFail
-dubbo_client_errors[InvalidParams.code] = InvalidParams
-dubbo_client_errors[InternalError.code] = InternalError
-dubbo_client_errors[InvalidRequest.code] = InvalidRequest
-dubbo_client_errors[UserDefinedError.code] = UserDefinedError
+dubbo_client_errors = {
+    MethodNotFound.code: MethodNotFound,
+    NoProvider.code: NoProvider,
+    ConnectionFail.code: ConnectionFail,
+    InvalidParams.code: InvalidParams,
+    InternalError.code: InternalError,
+    InvalidRequest.code: InvalidRequest,
+    UserDefinedError.code: UserDefinedError
+}

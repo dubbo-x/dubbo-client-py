@@ -1,5 +1,4 @@
 # coding=utf-8
-
 """
  Licensed to the Apache Software Foundation (ASF) under one or more
  contributor license agreements.  See the NOTICE file distributed with
@@ -16,8 +15,6 @@
  limitations under the License.
 
 """
-
-
 
 
 class ApplicationConfig(object):
@@ -43,14 +40,3 @@ class ApplicationConfig(object):
 
     def __str__(self):
         return 'ApplicationConfig is {0}'.format(",".join(k + ':' + v for k, v in vars(self).iteritems()))
-
-
-class ReferenceConfig(object):
-    registry = None
-    interface = ''
-    version = ''
-
-
-if __name__ == '__main__':
-    application_config = ApplicationConfig('test_app', version='2.0.0', owner='caozupeng', error='ssd')
-    print application_config
