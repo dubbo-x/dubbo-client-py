@@ -15,21 +15,25 @@
  limitations under the License.
 
 """
+import unittest
 from dubbo_client import ZookeeperRegistry, MulticastRegistry, Registry
 
-__author__ = 'caozupeng'
 
+class TestRegistry(unittest.TestCase):
 
-def multicat():
-    registry = MulticastRegistry('224.5.6.7:1234')
-    registry.subscribe('com.ofpay.demo.api.UserProvider')
-    print registry.get_providers('com.ofpay.demo.api.UserProvider')
+    def test_multicast_registry(self):
+        address = '224.5.6.7:1234'
+        service = 'com.unj.dubbotest.provider.DemoService'
+        registry = MulticastRegistry(address)
+        registry.subscribe(service)
+        print registry.get_providers(service)
 
-
-def zookeeper():
-    registry = ZookeeperRegistry('172.19.65.33:2181')
-    registry.subscribe('com.ofpay.demo.api.UserProvider')
-    print registry.get_providers('com.ofpay.demo.api.UserProvider')
+    def test_zookeeper_registry(self):
+        address = '127.0.0.1:2181'
+        service = 'com.unj.dubbotest.provider.DemoService'
+        registry = ZookeeperRegistry(address)
+        registry.subscribe(service)
+        print registry.get_providers(service)
 
 
 def test_registry():
@@ -50,4 +54,7 @@ def test_registry():
 
 
 if __name__ == '__main__':
-    multicat()
+    testSuite = unittest.TestSuite()
+    testSuite.addTest(TestRegistry('test_multicast_registry'))
+    # testSuite.addTest(TestRegistry('test_zookeeper_registry'))
+    unittest.TextTestRunner().run(testSuite)

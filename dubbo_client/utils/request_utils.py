@@ -15,24 +15,15 @@
  limitations under the License.
 
 """
-import unittest
-from dubbo_client import ZookeeperRegistry, DubboClient, DubboClientError, ApplicationConfig, MulticastRegistry
+
+__all__ = ['simple_urlencode']
 
 
-class TestRpclib(unittest.TestCase):
-
-    def test_something(self):
-        application_name = 'test_rpclib'
-        address = '224.5.6.7:1234'
-        service = 'com.unj.dubbotest.provider.DemoService'
-        config = ApplicationConfig(application_name)
-        registry = MulticastRegistry(address)
-        user_provider = DubboClient(service, registry)
-        result = user_provider.sayHello('World')
-        self.assertEqual(result, 'Hello World')
-
-
-if __name__ == '__main__':
-    testSuite = unittest.TestSuite()
-    testSuite.addTest(TestRpclib('test_something'))
-    unittest.TextTestRunner().run(testSuite)
+def simple_urlencode(query):
+    query = query.items()
+    l = []
+    for k, v in query:
+        k = str(k)
+        v = str(v)
+        l.append(k + '=' + v)
+    return '&'.join(l)

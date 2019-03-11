@@ -24,7 +24,7 @@ import socket
 import struct
 import threading
 import urllib
-from threading import Thread
+import time
 
 from kazoo.client import KazooClient
 from kazoo.protocol.states import KazooState
@@ -32,6 +32,8 @@ from kazoo.protocol.states import KazooState
 from dubbo_client.common import ServiceURL
 from dubbo_client.config import ApplicationConfig
 from dubbo_client.rpcerror import NoProvider
+
+from utils import simple_urlencode
 
 
 # 创建一个logger
@@ -100,7 +102,7 @@ class Registry(object):
         group = kwargs.get('group', '')
         version = kwargs.get('version', '')
         key = self._to_key(interface, version, group)
-        second = self._service_provides.get(interface, {})
+        second = self._service_providers.get(interface, {})
         return second.get(key, {})
 
     def get_random_provider(self, interface, **kwargs):
@@ -340,10 +342,7 @@ class ZookeeperRegistry(Registry):
         providers_children = self.__zk.get_children('{0}/{1}/{2}'.format('dubbo', interface, 'providers'),
                                                     watch=self.event_listener)
         logger.debug("watch node is {0}".format(providers_children))
-        self.__zk.get_children('{0}/{1}/{2}'.format('dubbo', interface, 'configurators'),
-                               watch=self.configuration_listener)
-        # 全部重新添加
-        self._compare_swap_nodes(interface, self.__unquote(providers_children))
+        self._compare_swap_nodes(interface, self.__unquote(providers_children))  # 全部重新添加
 
         configurators_nodes = self._get_provider_configuration(interface)
         self._set_provider_configuration(interface, configurators_nodes)
@@ -364,45 +363,43 @@ class ZookeeperRegistry(Registry):
 
 
 class MulticastRegistry(Registry):
-    class _Loop(Thread):
-        def __init__(self, address, callback):
-            Thread.__init__(self)
-            self.multicast_group, self.multicast_port = address.split(':')
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-            # in osx we should use SO_REUSEPORT instead of SO_REUSEADDR
-            if getattr(socket, 'SO_REUSEPORT', None):
-                self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-            else:
-                self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.sock.bind(('', int(self.multicast_port)))
-            mreq = struct.pack("4sl", socket.inet_aton(self.multicast_group), socket.INADDR_ANY)
-            self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-            self.callback = callback
 
-        def run(self):
-            while True:
-                event = self.sock.recv(10240)
-                self.callback(event.rstrip())
+    def __init__(self, address):
+        super(MulticastRegistry, self).__init__()
+        host, port = address.split(':')
+        self.host = host
+        self.port = int(port)
 
-        def set_mssage(self, msg):
-            self.sock.sendto(msg, (self.multicast_group, int(self.multicast_port)))
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        if getattr(socket, 'SO_REUSEPORT', None):
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        else:
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind(('', self.port))
+        mreq = struct.pack("4sl", socket.inet_aton(self.host), socket.INADDR_ANY)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-    def __init__(self, address, application_config=None):
-        Registry.__init__(self)
-        if application_config:
-            self._app_config = application_config
-        self.event_loop = self._Loop(address, self.event_listener)
-        self.event_loop.setDaemon(True)
-        self.event_loop.start()
+    def subscribe(self, interface, **kwargs):
+        host = self.host
+        params = {
+            'application': '',
+            'category': 'providers,configurators,routers',
+            'dubbo': '',
+            'interface': interface,
+            'methods': '',
+            'pid': os.getpid(),
+            'side': 'consumer',
+            'timestamp': int(time.time())
+        }
+        url = 'consumer://{0}/{1}?{2}'.format(host, interface, simple_urlencode(params))
+        message = 'subscribe ' + url
+        self.sock.sendto(message, (self.host, self.port))
 
-    def _do_event(self, event):
-        if event.startswith('register'):
-            url = event[9:]
-            if url.startswith('jsonrpc'):
-                service_provide = ServiceURL(url)
-                self._add_node(service_provide.interface, service_provide)
-        if event.startswith('unregister'):
-            url = event[11:]
-            if url.startswith('jsonrpc'):
-                service_provide = ServiceURL(url)
-                self._remove_node(service_provide.interface, service_provide)
+        while True:
+            message = self.sock.recv(1024)
+            if message.startswith('register'):
+                url = message[9:]
+                if url.startswith('jsonrpc'):
+                    service_provide = ServiceURL(url)
+                    self._add_node(service_provide.interface, service_provide)
+                    break
