@@ -16,45 +16,50 @@
 
 """
 import unittest
-from dubbo_client import ZookeeperRegistry, MulticastRegistry, Registry
+from dubbo_client import ApplicationConfig
+from dubbo_client import Registry, ZookeeperRegistry, MulticastRegistry
 
 
 class TestRegistry(unittest.TestCase):
 
+    def test_registry(self):
+        registry = Registry()
+        registry._add_node("com.ofpay.demo.api.UserProvider",
+                           "jsonrpc://192.168.2.1:38081/com.ofpay.demo.api.UserProvider2?"
+                           "anyhost=true&application=jsonrpcdemo&default.timeout=10000&"
+                           "dubbo=2.4.10&environment=product&interface=com.ofpay.demo.api.UserProvider&"
+                           "methods=getUser,queryAll,isLimit,queryUser&owner=wenwu&pid=60402&revision=2.0&"
+                           "side=provider&timestamp=1429105028153&version=2.0")
+        registry._add_node("com.ofpay.demo.api.UserProvider",
+                           "jsonrpc://192.168.2.1:38081/com.ofpay.demo.api.UserProvider?"
+                           "anyhost=true&application=jsonrpcdemo&default.timeout=10000&"
+                           "dubbo=2.4.10&environment=product&interface=com.ofpay.demo.api.UserProvider&"
+                           "methods=getUser,queryAll,isLimit,queryUser&owner=wenwu&pid=60402&revision=2.0&"
+                           "side=provider&timestamp=1429105028153&version=1.0")
+        assert registry._service_providers
+
     def test_multicast_registry(self):
         address = '224.5.6.7:1234'
-        service = 'com.unj.dubbotest.provider.DemoService'
-        registry = MulticastRegistry(address)
-        registry.subscribe(service)
-        print registry.get_providers(service)
+        interface = 'com.unj.dubbotest.provider.DemoService'
+        application_config = ApplicationConfig('app_consumer')
+        registry = MulticastRegistry(address, application_config)
+        registry.register(interface)
+        registry.subscribe(interface)
+        print(registry.get_providers(interface))
+        registry.unregister(interface)
+        registry.unsubscribe(interface)
 
     def test_zookeeper_registry(self):
         address = '127.0.0.1:2181'
-        service = 'com.unj.dubbotest.provider.DemoService'
+        interface = 'com.unj.dubbotest.provider.DemoService'
         registry = ZookeeperRegistry(address)
-        registry.subscribe(service)
-        print registry.get_providers(service)
-
-
-def test_registry():
-    registry = Registry()
-    registry._add_node("com.ofpay.demo.api.UserProvider",
-                       "jsonrpc://192.168.2.1:38081/com.ofpay.demo.api.UserProvider2?"
-                       "anyhost=true&application=jsonrpcdemo&default.timeout=10000&"
-                       "dubbo=2.4.10&environment=product&interface=com.ofpay.demo.api.UserProvider&"
-                       "methods=getUser,queryAll,isLimit,queryUser&owner=wenwu&pid=60402&revision=2.0&"
-                       "side=provider&timestamp=1429105028153&version=2.0")
-    registry._add_node("com.ofpay.demo.api.UserProvider",
-                       "jsonrpc://192.168.2.1:38081/com.ofpay.demo.api.UserProvider?"
-                       "anyhost=true&application=jsonrpcdemo&default.timeout=10000&"
-                       "dubbo=2.4.10&environment=product&interface=com.ofpay.demo.api.UserProvider&"
-                       "methods=getUser,queryAll,isLimit,queryUser&owner=wenwu&pid=60402&revision=2.0&"
-                       "side=provider&timestamp=1429105028153&version=1.0")
-    assert registry._service_providers
+        registry.subscribe(interface)
+        print(registry.get_providers(interface))
 
 
 if __name__ == '__main__':
     testSuite = unittest.TestSuite()
+    # testSuite.addTest(TestRegistry('test_registry'))
     testSuite.addTest(TestRegistry('test_multicast_registry'))
     # testSuite.addTest(TestRegistry('test_zookeeper_registry'))
     unittest.TextTestRunner().run(testSuite)

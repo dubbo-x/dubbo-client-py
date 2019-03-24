@@ -29,11 +29,9 @@ import time
 from kazoo.client import KazooClient
 from kazoo.protocol.states import KazooState
 
-from dubbo_client.common import ServiceURL
+from dubbo_client.common import *
 from dubbo_client.config import ApplicationConfig
 from dubbo_client.rpcerror import NoProvider
-
-from utils import simple_urlencode
 
 
 # 创建一个logger
@@ -310,22 +308,22 @@ class ZookeeperRegistry(Registry):
         print self._service_providers
 
     def register(self, interface, **kwargs):
-        ip = self.__zk._connection._socket.getsockname()[0]
-        params = {
-            'interface': interface,
-            'application': self._app_config.name,
-            'application.version': self._app_config.version,
-            'category': 'consumer',
-            'dubbo': 'dubbo-client-py-1.0.0',
-            'environment': self._app_config.environment,
-            'method': '',
-            'owner': self._app_config.owner,
-            'side': 'consumer',
-            'pid': os.getpid(),
-            'version': '1.0'
-        }
-        url = 'consumer://{0}/{1}?{2}'.format(ip, interface, urllib.urlencode(params))
-        # print urllib.quote(url, safe='')
+        url = URLBuilder()\
+            .set_protocol(Constants.CONSUMER)\
+            .set_host(self.__zk._connection._socket.getsockname()[0])\
+            .set_interface(interface)\
+            .add_param(Constants.INTERFACE_KEY, interface)\
+            .add_param(Constants.APPLICATION_KEY, self._app_config.name)\
+            .add_param('application.version', self._app_config.version)\
+            .add_param(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY)\
+            .add_param('dubbo', 'dubbo-client-py-1.0.0')\
+            .add_param('environment', self._app_config.environment)\
+            .add_param(Constants.METHODS_KEY, '')\
+            .add_param('owner', self._app_config.owner)\
+            .add_param('side', Constants.CONSUMER)\
+            .add_param(Constants.PID_KEY, os.getpid())\
+            .add_param('version', '1.0')
+        # TODO：转义
 
         consumer_path = '{0}/{1}/{2}'.format('dubbo', interface, 'consumers')
         self.__zk.ensure_path(consumer_path)
@@ -364,42 +362,102 @@ class ZookeeperRegistry(Registry):
 
 class MulticastRegistry(Registry):
 
-    def __init__(self, address):
+    max_packet_size = 8192
+
+    def __init__(self, address, application_config):
         super(MulticastRegistry, self).__init__()
         host, port = address.split(':')
         self.host = host
         self.port = int(port)
+
+        self.app_config = application_config
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         if getattr(socket, 'SO_REUSEPORT', None):
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         else:
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(('', self.port))
-        mreq = struct.pack("4sl", socket.inet_aton(self.host), socket.INADDR_ANY)
+        self.local_host = socket.gethostbyname(socket.gethostname())
+        self.sock.bind((self.local_host, self.port))
+        mreq = struct.pack('4sl', socket.inet_aton(self.host), socket.INADDR_ANY)
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
+    def register(self, interface, **kwargs):
+        url = URLBuilder()\
+            .set_protocol(Constants.CONSUMER_PROTOCOL)\
+            .set_host(self.local_host)\
+            .set_interface(interface)\
+            .add_param(Constants.APPLICATION_KEY, self.app_config.name)\
+            .add_param(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY)\
+            .add_param(Constants.CHECK_KEY, 'false')\
+            .add_param(Constants.DUBBO_VERSION_KEY, 'dubbo-client-py-1.0.0')\
+            .add_param(Constants.INTERFACE_KEY, interface)\
+            .add_param(Constants.METHODS_KEY, '')\
+            .add_param(Constants.PID_KEY, os.getpid())\
+            .add_param(Constants.SIDE_KEY, Constants.CONSUMER_SIDE)\
+            .add_param(Constants.TIMESTAMP_KEY, int(time.time()))\
+            .build()
+        message = '{0} {1}'.format(Constants.REGISTER, url)
+        self.sock.sendto(message, (self.host, self.port))
+        self.sock.recv(self.max_packet_size)
+
     def subscribe(self, interface, **kwargs):
-        host = self.host
-        params = {
-            'application': '',
-            'category': 'providers,configurators,routers',
-            'dubbo': '',
-            'interface': interface,
-            'methods': '',
-            'pid': os.getpid(),
-            'side': 'consumer',
-            'timestamp': int(time.time())
-        }
-        url = 'consumer://{0}/{1}?{2}'.format(host, interface, simple_urlencode(params))
-        message = 'subscribe ' + url
+        url = URLBuilder()\
+            .set_protocol(Constants.CONSUMER_PROTOCOL)\
+            .set_host(self.local_host)\
+            .set_interface(interface)\
+            .add_param(Constants.APPLICATION_KEY, self.app_config.name)\
+            .add_param(Constants.CATEGORY_KEY, ','.join([Constants.PROVIDERS_CATEGORY, Constants.CONFIGURATORS_CATEGORY, Constants.ROUTES_CATEGORY]))\
+            .add_param(Constants.DUBBO_VERSION_KEY, 'dubbo-client-py-1.0.0')\
+            .add_param(Constants.INTERFACE_KEY, interface)\
+            .add_param(Constants.METHODS_KEY, '')\
+            .add_param(Constants.PID_KEY, os.getpid())\
+            .add_param(Constants.SIDE_KEY, Constants.CONSUMER_SIDE)\
+            .add_param(Constants.TIMESTAMP_KEY, int(time.time()))\
+            .build()
+        message = '{0} {1}'.format(Constants.SUBSCRIBE, url)
         self.sock.sendto(message, (self.host, self.port))
 
         while True:
-            message = self.sock.recv(1024)
-            if message.startswith('register'):
+            message = self.sock.recv(self.max_packet_size)
+            if message.startswith(Constants.REGISTER):
                 url = message[9:]
-                if url.startswith('jsonrpc'):
+                if url.startswith(Constants.JSONRPC_PROTOCOL):
                     service_provide = ServiceURL(url)
                     self._add_node(service_provide.interface, service_provide)
                     break
+
+    def unregister(self, interface, **kwargs):
+        url = URLBuilder()\
+            .set_protocol(Constants.CONSUMER_PROTOCOL)\
+            .set_host(self.local_host)\
+            .set_interface(interface)\
+            .add_param(Constants.APPLICATION_KEY, self.app_config.name)\
+            .add_param(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY)\
+            .add_param(Constants.CHECK_KEY, 'false')\
+            .add_param(Constants.DUBBO_VERSION_KEY, 'dubbo-client-py-1.0.0')\
+            .add_param(Constants.INTERFACE_KEY, interface)\
+            .add_param(Constants.METHODS_KEY, '')\
+            .add_param(Constants.PID_KEY, os.getpid())\
+            .add_param(Constants.SIDE_KEY, Constants.CONSUMER_SIDE)\
+            .add_param(Constants.TIMESTAMP_KEY, int(time.time()))\
+            .build()
+        message = '{0} {1}'.format(Constants.UNREGISTER, url)
+        self.sock.sendto(message, (self.host, self.port))
+
+    def unsubscribe(self, interface, **kwargs):
+        url = URLBuilder()\
+            .set_protocol(Constants.CONSUMER_PROTOCOL)\
+            .set_host(self.local_host)\
+            .set_interface(interface)\
+            .add_param(Constants.APPLICATION_KEY, self.app_config.name)\
+            .add_param(Constants.CATEGORY_KEY, ','.join([Constants.PROVIDERS_CATEGORY, Constants.CONFIGURATORS_CATEGORY, Constants.ROUTES_CATEGORY]))\
+            .add_param(Constants.DUBBO_VERSION_KEY, 'dubbo-client-py-1.0.0')\
+            .add_param(Constants.INTERFACE_KEY, interface)\
+            .add_param(Constants.METHODS_KEY, '')\
+            .add_param(Constants.PID_KEY, os.getpid())\
+            .add_param(Constants.SIDE_KEY, Constants.CONSUMER_SIDE)\
+            .add_param(Constants.TIMESTAMP_KEY, int(time.time()))\
+            .build()
+        message = '{0} {1}'.format(Constants.UNSUBSCRIBE, url)
+        self.sock.sendto(message, (self.host, self.port))

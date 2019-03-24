@@ -19,6 +19,59 @@
 from urlparse import urlparse, parse_qsl
 
 
+class Constants(object):
+
+    DUBBO = 'dubbo'
+    PROVIDER = 'provider'
+    CONSUMER = 'consumer'
+    REGISTER = 'register'
+    UNREGISTER = 'unregister'
+    SUBSCRIBE = 'subscribe'
+    UNSUBSCRIBE = 'unsubscribe'
+    CATEGORY_KEY = 'category'
+    PROVIDERS_CATEGORY = 'providers'
+    CONSUMERS_CATEGORY = 'consumers'
+    ROUTES_CATEGORY = 'routers'
+    DYNAMIC_ROUTES_CATEGORY = 'dynamicrouters'
+    CONFIGURATORS_CATEGORY = 'configurators'
+    DYNAMIC_CONFIGURATORS_CATEGORY = 'dynamicconfigurators'
+    APP_DYNAMIC_CONFIGURATORS_CATEGORY = 'appdynamicconfigurators'
+    DEFAULT_CATEGORY = PROVIDERS_CATEGORY
+    DEFAULT_PROTOCOL = 'dubbo'
+    SIDE_KEY = 'side'
+    PROVIDER_SIDE = 'provider'
+    CONSUMER_SIDE = 'consumer'
+    DEFAULT_REGISTRY = 'dubbo'
+    ANYHOST_KEY = 'anyhost'
+    ANYHOST_VALUE = '0.0.0.0'
+    LOCALHOST_KEY = 'localhost'
+    LOCALHOST_VALUE = '127.0.0.1'
+    APPLICATION_KEY = 'application'
+    PROTOCOL_KEY = 'protocol'
+    DUBBO_PROTOCOL = DUBBO
+    METHODS_KEY = 'methods'
+    PID_KEY = 'pid'
+    TIMESTAMP_KEY = 'timestamp'
+    CHECK_KEY = 'check'
+    REGISTER_KEY = 'register'
+    SUBSCRIBE_KEY = 'subscribe'
+    INTERFACE_KEY = 'interface'
+    DUBBO_VERSION_KEY = 'dubbo'
+    PROVIDER_PROTOCOL = 'provider'
+    CONSUMER_PROTOCOL = 'consumer'
+    JSONRPC_PROTOCOL = 'jsonrpc'
+
+
+def simple_urlencode(query):
+    query = query.items()
+    l = []
+    for k, v in query:
+        k = str(k)
+        v = str(v)
+        l.append(k + '=' + v)
+    return '&'.join(l)
+
+
 class ServiceURL(object):
     protocol = 'jsonrpc'
     location = ''  # ip+port
@@ -94,3 +147,44 @@ class ServiceURL(object):
             self.disabled = False
         if not has_weight_value:
             self.weight = 100
+
+
+class URLBuilder(object):
+
+    def __init__(self):
+        self.protocol = ''
+        self.host = ''
+        self.port = 0
+        self.interface = ''
+        self.params = dict()
+
+    def set_protocol(self, protocol):
+        self.protocol = protocol
+        return self
+
+    def set_host(self, host):
+        self.host = host
+        return self
+
+    def set_port(self, port):
+        self.port = port
+        return self
+
+    def set_interface(self, interface):
+        self.interface = interface
+        return self
+
+    def add_param(self, k, v):
+        self.params[k] = v
+        return self
+
+    def build(self):
+        address = self.host if self.port == 0 else '{0}:{1}'.format(self.host, self.port)
+        kv = simple_urlencode(self.params)
+        url = '{0}://{1}/{2}?{3}'.format(
+            self.protocol,
+            address,
+            self.interface,
+            kv
+        )
+        return url
