@@ -1,6 +1,9 @@
 ## Python Dubbo Client
+
 ## Achieve load balancing on the client side、auto discovery service function with Zookeeper
+
 ### Python calls the Dubbo interface's jsonrpc protocol
+
 Please use dubbo-rpc-jsonrpc and configure protocol in Dubbo for jsonrpc protocol   
 *Reference* [https://github.com/apache/incubator-dubbo-rpc-jsonrpc](https://github.com/apache/incubator-dubbo-rpc-jsonrpc)
 
@@ -49,11 +52,7 @@ for i in range(1000):
 ```
 
 ### TODO
-Optimize performance, minimize the impact of service upper and lower lines.  
-Support Retry parameters  
-Support weight call  
-Unit test coverage   
-### Licenses
-Apache License
-### Thanks 
-Thank @jingpeicomp for being a Guinea pig. It has been running normally for several months in the production environment. Thank you!
+
+- Support Retry parameters  
+- Support weight call  
+- Unit test coverage   
