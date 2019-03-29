@@ -16,7 +16,7 @@
 
 """
 import unittest
-from dubbo_client import ApplicationConfig
+from dubbo_client import Application
 from dubbo_client import Registry, ZookeeperRegistry, MulticastRegistry
 
 
@@ -41,7 +41,7 @@ class TestRegistry(unittest.TestCase):
     def test_multicast_registry(self):
         address = '224.5.6.7:1234'
         interface = 'com.unj.dubbotest.provider.DemoService'
-        application_config = ApplicationConfig('app_consumer')
+        application_config = Application('app_consumer')
         registry = MulticastRegistry(address, application_config)
         registry.register(interface)
         registry.subscribe(interface)

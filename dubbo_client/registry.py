@@ -30,7 +30,7 @@ from kazoo.client import KazooClient
 from kazoo.protocol.states import KazooState
 
 from dubbo_client.common import *
-from dubbo_client.config import ApplicationConfig
+from dubbo_client.config import Application
 from dubbo_client.rpcerror import NoProvider
 
 
@@ -253,7 +253,7 @@ class Registry(object):
 
 
 class ZookeeperRegistry(Registry):
-    _app_config = ApplicationConfig('default_app')
+    _app_config = Application('default_app')
     _connect_state = 'UNCONNECT'
 
     def __init__(self, zk_hosts, application_config=None):
@@ -317,9 +317,7 @@ class ZookeeperRegistry(Registry):
             .add_param('application.version', self._app_config.version)\
             .add_param(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY)\
             .add_param('dubbo', 'dubbo-client-py-1.0.0')\
-            .add_param('environment', self._app_config.environment)\
             .add_param(Constants.METHODS_KEY, '')\
-            .add_param('owner', self._app_config.owner)\
             .add_param('side', Constants.CONSUMER)\
             .add_param(Constants.PID_KEY, os.getpid())\
             .add_param('version', '1.0')

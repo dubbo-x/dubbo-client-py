@@ -17,23 +17,14 @@
 """
 
 
-class ApplicationConfig(object):
-    # 应用名称
-    name = 'default'
+class Application(object):
+
     # 模块版本
     version = '1.0.0'
-    # 应用负责人
-    owner = ''
-    # 组织名(BU或部门)
-    organization = ''
-    # 分层
-    architecture = 'web'
-    # 环境，如：dev/test/run
-    environment = 'run'
 
     def __init__(self, name, **kwargs):
         self.name = name
-        object_property = dir(ApplicationConfig)
+        object_property = dir(Application)
         for key, value in kwargs.items():
             if key in object_property:
                 setattr(self, key, value)

@@ -16,7 +16,7 @@
 
 """
 import unittest
-from dubbo_client import ZookeeperRegistry, DubboClient, DubboClientError, ApplicationConfig, MulticastRegistry
+from dubbo_client import ZookeeperRegistry, DubboClient, DubboClientError, Application, MulticastRegistry
 
 
 class TestRpclib(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestRpclib(unittest.TestCase):
         application_name = 'test_rpclib'
         address = '224.5.6.7:1234'
         service = 'com.unj.dubbotest.provider.DemoService'
-        config = ApplicationConfig(application_name)
+        config = Application(application_name)
         registry = MulticastRegistry(address)
         user_provider = DubboClient(service, registry)
         result = user_provider.sayHello('World')
