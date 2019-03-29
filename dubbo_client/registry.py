@@ -256,10 +256,9 @@ class ZookeeperRegistry(Registry):
     _app_config = Application('default_app')
     _connect_state = 'UNCONNECT'
 
-    def __init__(self, zk_hosts, application_config=None):
-        Registry.__init__(self)
-        if application_config:
-            self._app_config = application_config
+    def __init__(self, zk_hosts, application_config):
+        super(ZookeeperRegistry, self).__init__()
+        self._app_config = application_config
         self.__zk = KazooClient(hosts=zk_hosts)
         self.__zk.add_listener(self.__state_listener)
         self.__zk.start()
