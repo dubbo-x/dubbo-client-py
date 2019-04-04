@@ -19,6 +19,8 @@ import unittest
 from dubbo_client import Application
 from dubbo_client import Registry, ZookeeperRegistry, MulticastRegistry
 
+application_config = Application('app_consumer')
+
 
 class TestRegistry(unittest.TestCase):
 
@@ -40,8 +42,7 @@ class TestRegistry(unittest.TestCase):
 
     def test_multicast_registry(self):
         address = '224.5.6.7:1234'
-        interface = 'com.unj.dubbotest.provider.DemoService'
-        application_config = Application('app_consumer')
+        interface = 'dubbo.DubboService'
         registry = MulticastRegistry(address, application_config)
         registry.register(interface)
         registry.subscribe(interface)
@@ -51,8 +52,8 @@ class TestRegistry(unittest.TestCase):
 
     def test_zookeeper_registry(self):
         address = '127.0.0.1:2181'
-        interface = 'com.unj.dubbotest.provider.DemoService'
-        registry = ZookeeperRegistry(address)
+        interface = 'dubbo.DubboService'
+        registry = ZookeeperRegistry(address, application_config)
         registry.subscribe(interface)
         print(registry.get_providers(interface))
 
@@ -60,6 +61,6 @@ class TestRegistry(unittest.TestCase):
 if __name__ == '__main__':
     testSuite = unittest.TestSuite()
     # testSuite.addTest(TestRegistry('test_registry'))
-    testSuite.addTest(TestRegistry('test_multicast_registry'))
-    # testSuite.addTest(TestRegistry('test_zookeeper_registry'))
+    # testSuite.addTest(TestRegistry('test_multicast_registry'))
+    testSuite.addTest(TestRegistry('test_zookeeper_registry'))
     unittest.TextTestRunner().run(testSuite)
